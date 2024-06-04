@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modelo de Predicción</title>
+    <style>
+        #container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 2px solid #004556;
+            border-radius: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #004556;
+        }
+        p {
+            text-align: center;
+            font-style: italic;
+            color: #555;
+        }
+        #imagePreview {
+            display: none;
+            margin: 0 auto;
+            max-width: 300px;
+            max-height: 300px;
+            border-radius: 10px;
+        }
+        #predictionForm button {
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            background-color: #004556;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #predictionForm button:hover {
+            background-color: #00252B;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>Modelo de Predicción</h1>
+        <p>Nuestra empresa, confiable y comprometida, tiene como objetivo brindar apoyo a los hospitales 
+            mediante la aplicación de técnicas de machine learning. Nos dedicamos a prever si un paciente 
+            requerirá hospitalización o si estará listo para ser dado de alta.</p>
+        <form id="predictionForm" enctype="multipart/form-data">
+            <label for="fileInput">Por favor, suba el archivo de Excel correspondiente al paciente:</label>
+            <input type="file" id="fileInput" name="fileInput" accept=".xlsx, .xls"><br><br>
+            <img id="imagePreview" src="#" alt="Vista previa de la imagen">
+            <button type="button" onclick="sendPrediction()">Enviar</button>
+        </form>
+        <p id="result"></p>
+    </div>
+
+    <script>
+        function showImagePreview(input) {
+            const file = input.files[0];
+            const imagePreview = document.getElementById('imagePreview');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
+
+        async function sendPrediction() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('http://127.0.0.1:5000/predict', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            document.getElementById('result').innerText = 'Predicción: ' + result.prediction;
+        }
+    </script>
+</body>
+</html>
