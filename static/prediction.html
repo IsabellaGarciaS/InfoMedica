@@ -21,13 +21,6 @@
             font-style: italic;
             color: #555;
         }
-        #imagePreview {
-            display: none;
-            margin: 0 auto;
-            max-width: 300px;
-            max-height: 300px;
-            border-radius: 10px;
-        }
         #predictionForm button {
             border: none;
             border-radius: 20px;
@@ -40,7 +33,25 @@
         #predictionForm button:hover {
             background-color: #00252B;
         }
+        #fileInputContainer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        #fileInput {
+            display: none;
+        }
+        .custom-file-upload {
+            display: inline-block;
+            cursor: pointer;
+        }
+        .custom-file-upload img {
+            width: 64px;
+            height: 64px;
+        }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 </head>
 <body>
     <div id="container">
@@ -49,41 +60,63 @@
             mediante la aplicación de técnicas de machine learning. Nos dedicamos a prever si un paciente 
             requerirá hospitalización o si estará listo para ser dado de alta.</p>
         <form id="predictionForm" enctype="multipart/form-data">
-            <label for="fileInput">Por favor, suba el archivo de Excel correspondiente al paciente:</label>
-            <input type="file" id="fileInput" name="fileInput" accept=".xlsx, .xls"><br><br>
-            <img id="imagePreview" src="#" alt="Vista previa de la imagen">
+            <div id="fileInputContainer">
+                <label for="fileInput" class="custom-file-upload">
+                    <img src="static/images/icons8-subir-64.png" alt="Subir archivo">
+                </label>
+                <input type="file" id="fileInput" name="fileInput" accept=".xlsx, .xls">
+            </div>
+            <br><br>
             <button type="button" onclick="sendPrediction()">Enviar</button>
         </form>
         <p id="result"></p>
     </div>
 
     <script>
-        function showImagePreview(input) {
-            const file = input.files[0];
-            const imagePreview = document.getElementById('imagePreview');
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                imagePreview.src = e.target.result;
-                imagePreview.style.display = 'block';
-            }
-            reader.readAsDataURL(file);
-        }
-
         async function sendPrediction() {
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
 
-            const formData = new FormData();
-            formData.append('file', file);
+            if (!file) {
+                alert("Por favor, suba un archivo primero.");
+                return;
+            }
 
-            const response = await fetch('http://127.0.0.1:5000/predict', {
-                method: 'POST',
-                body: formData
-            });
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
-            const result = await response.json();
-            document.getElementById('result').innerText = 'Predicción: ' + result.prediction;
+                if (jsonData.length === 0) {
+                    alert("El archivo de Excel está vacío.");
+                    return;
+                }
+
+                const pacienteData = jsonData[0];
+
+                try {
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(pacienteData)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Error en la predicción');
+                    }
+
+                    const result = await response.json();
+                    document.getElementById('result').innerText = 'Predicción: ' + result.prediction;
+                } catch (error) {
+                    console.error('Error:', error);
+                    document.getElementById('result').innerText = 'Ocurrió un error al realizar la predicción.';
+                }
+            };
+            reader.readAsArrayBuffer(file);
         }
     </script>
 </body>
